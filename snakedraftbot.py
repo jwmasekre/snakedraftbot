@@ -1,131 +1,131 @@
 #chatgpt 3.5 helped start this
-#prompt:
-#   I need a discord bot coded with discord.py. The bot needs to be able to facilitate a snake draft. First, the person who initiates the draft should be identified as the commissioner. The commissioner should identify whether the draft is opt-in (all participants must enroll in the draft to be included) or opt-out (all users in the server are automatically enrolled, and must explicitly opt-out to not participate) when initiating the draft. Secondly, the commissioner should be able to load comma-delimited list of all available draftees. The comma-delimited list should require an ID field and a name field but also support an indeterminate number of fields. Third, the commissioner should be able to execute the draft. When the draft is executed, the commissioner identifies the number of rounds. The bot establishes a random draft order following snake draft order rules. The bot then notifies each user when it is their turn. The user can request a list of the current available draftees (in table format) and make a selection, at which point their turn ends. Any draftee selected by a user is removed from the list of available draftees and is recorded as being claimed by that user. Once all rounds have concluded, the bot outputs the draftees each user claimed.
+    #prompt:
+    #   I need a discord bot coded with discord.py. The bot needs to be able to facilitate a snake draft. First, the person who initiates the draft should be identified as the commissioner. The commissioner should identify whether the draft is opt-in (all participants must enroll in the draft to be included) or opt-out (all users in the server are automatically enrolled, and must explicitly opt-out to not participate) when initiating the draft. Secondly, the commissioner should be able to load comma-delimited list of all available draftees. The comma-delimited list should require an ID field and a name field but also support an indeterminate number of fields. Third, the commissioner should be able to execute the draft. When the draft is executed, the commissioner identifies the number of rounds. The bot establishes a random draft order following snake draft order rules. The bot then notifies each user when it is their turn. The user can request a list of the current available draftees (in table format) and make a selection, at which point their turn ends. Any draftee selected by a user is removed from the list of available draftees and is recorded as being claimed by that user. Once all rounds have concluded, the bot outputs the draftees each user claimed.
 
-#below is the initial output
-#----------------------------------------------------------#
-#import discord
-#from discord.ext import commands
-#import random
-#
-## Initialize bot
-#bot = commands.Bot(command_prefix='!')
-#
-#@bot.event
-#async def on_ready():
-#    print(f'Bot is connected as {bot.user}')
-#
-## Define global variables
-#commissioner = None
-#opt_in = False
-#draftees = []
-#
-#@bot.command()
-#async def initiate_draft(ctx, draft_type):
-#    global commissioner, opt_in, draftees
-#    commissioner = ctx.author
-#    opt_in = draft_type.lower() == 'opt-in'
-#    # Load draftees (parse CSV, etc.)
-#    # Set up draftees list
-#
-#@bot.command()
-#async def execute_draft(ctx, num_rounds):
-#    global commissioner, opt_in, draftees
-#    # Randomize draft order (snake draft)
-#    # Execute draft
-#    # Notify users when it's their turn
-#    # Allow users to make selections
-#
-#@bot.command()
-#async def list_draftees(ctx):
-#    global draftees
-#    # Send a table of available draftees
-#
-#@bot.command()
-#async def make_selection(ctx, selection):
-#    global commissioner, draftees
-#    # Record the selection, remove from available draftees
-#
-## Add more commands as needed
-## Run the bot
-#bot.run('YOUR_BOT_TOKEN')
-#----------------------------------------------------------#
-#csv prompt: back to the snake draft bot, can i pass an attachment through to a bot? if so, how would i pass a csv to the bot?
+    #below is the initial output
+    #----------------------------------------------------------#
+    #import discord
+    #from discord.ext import commands
+    #import random
+    #
+    ## Initialize bot
+    #bot = commands.Bot(command_prefix='!')
+    #
+    #@bot.event
+    #async def on_ready():
+    #    print(f'Bot is connected as {bot.user}')
+    #
+    ## Define global variables
+    #commissioner = None
+    #opt_in = False
+    #draftees = []
+    #
+    #@bot.command()
+    #async def initiate_draft(ctx, draft_type):
+    #    global commissioner, opt_in, draftees
+    #    commissioner = ctx.author
+    #    opt_in = draft_type.lower() == 'opt-in'
+    #    # Load draftees (parse CSV, etc.)
+    #    # Set up draftees list
+    #
+    #@bot.command()
+    #async def execute_draft(ctx, num_rounds):
+    #    global commissioner, opt_in, draftees
+    #    # Randomize draft order (snake draft)
+    #    # Execute draft
+    #    # Notify users when it's their turn
+    #    # Allow users to make selections
+    #
+    #@bot.command()
+    #async def list_draftees(ctx):
+    #    global draftees
+    #    # Send a table of available draftees
+    #
+    #@bot.command()
+    #async def make_selection(ctx, selection):
+    #    global commissioner, draftees
+    #    # Record the selection, remove from available draftees
+    #
+    ## Add more commands as needed
+    ## Run the bot
+    #bot.run('YOUR_BOT_TOKEN')
+    #----------------------------------------------------------#
+    #csv prompt: back to the snake draft bot, can i pass an attachment through to a bot? if so, how would i pass a csv to the bot?
 
-#@bot.command()
-#async def load_draftees(ctx):
-#    global draftees
-#
-#    # Check if there are attachments
-#    if ctx.message.attachments:
-#        attachment = ctx.message.attachments[0]  # Assuming only one attachment
-#        if attachment.filename.endswith('.csv'):
-#            # Download the file
-#            await attachment.save(attachment.filename)
-#
-#            # Read and process the CSV file
-#            with open(attachment.filename, 'r') as file:
-#                reader = csv.reader(file)
-#                for row in reader:
-#                    # Assuming first column is ID and second column is Name
-#                    id, name = row[0], row[1]
-#                    draftees.append((id, name))
-#
-#            # Clean up by deleting the file
-#            os.remove(attachment.filename)
-#            await ctx.send("Draftees loaded successfully!")
-#        else:
-#            await ctx.send("Please provide a CSV file.")
-#    else:
-#        await ctx.send("Please attach a CSV file.")
-#----------------------------------------------------------#
-#prompt: how can i allow for an unknown number of columns in addition to the id and name column?
+    #@bot.command()
+    #async def load_draftees(ctx):
+    #    global draftees
+    #
+    #    # Check if there are attachments
+    #    if ctx.message.attachments:
+    #        attachment = ctx.message.attachments[0]  # Assuming only one attachment
+    #        if attachment.filename.endswith('.csv'):
+    #            # Download the file
+    #            await attachment.save(attachment.filename)
+    #
+    #            # Read and process the CSV file
+    #            with open(attachment.filename, 'r') as file:
+    #                reader = csv.reader(file)
+    #                for row in reader:
+    #                    # Assuming first column is ID and second column is Name
+    #                    id, name = row[0], row[1]
+    #                    draftees.append((id, name))
+    #
+    #            # Clean up by deleting the file
+    #            os.remove(attachment.filename)
+    #            await ctx.send("Draftees loaded successfully!")
+    #        else:
+    #            await ctx.send("Please provide a CSV file.")
+    #    else:
+    #        await ctx.send("Please attach a CSV file.")
+    #----------------------------------------------------------#
+    #prompt: how can i allow for an unknown number of columns in addition to the id and name column?
 
-#@bot.command()
-#async def load_draftees(ctx):
-#    global draftees
-#
-#    if ctx.message.attachments:
-#        attachment = ctx.message.attachments[0]
-#        if attachment.filename.endswith('.csv'):
-#            await attachment.save(attachment.filename)
-#
-#            with open(attachment.filename, 'r') as file:
-#                reader = csv.DictReader(file)
-#                for row in reader:
-#                    id = row['ID']
-#                    name = row['Name']
-#                    other_fields = {key: value for key, value in row.items() if key not in ['ID', 'Name']}
-#
-#                    draftees.append({'ID': id, 'Name': name, **other_fields})
-#
-#            os.remove(attachment.filename)
-#            await ctx.send("Draftees loaded successfully!")
-#        else:
-#            await ctx.send("Please provide a CSV file.")
-#    else:
-#        await ctx.send("Please attach a CSV file.")
-#----------------------------------------------------------#
-#list prompt: now that we've ingested the draftees, how can we list the draftees, and format the output in a table?
+    #@bot.command()
+    #async def load_draftees(ctx):
+    #    global draftees
+    #
+    #    if ctx.message.attachments:
+    #        attachment = ctx.message.attachments[0]
+    #        if attachment.filename.endswith('.csv'):
+    #            await attachment.save(attachment.filename)
+    #
+    #            with open(attachment.filename, 'r') as file:
+    #                reader = csv.DictReader(file)
+    #                for row in reader:
+    #                    id = row['ID']
+    #                    name = row['Name']
+    #                    other_fields = {key: value for key, value in row.items() if key not in ['ID', 'Name']}
+    #
+    #                    draftees.append({'ID': id, 'Name': name, **other_fields})
+    #
+    #            os.remove(attachment.filename)
+    #            await ctx.send("Draftees loaded successfully!")
+    #        else:
+    #            await ctx.send("Please provide a CSV file.")
+    #    else:
+    #        await ctx.send("Please attach a CSV file.")
+    #----------------------------------------------------------#
+    #list prompt: now that we've ingested the draftees, how can we list the draftees, and format the output in a table?
 
-#from tabulate import tabulate
-#
-#@bot.command()
-#async def list_draftees(ctx):
-#    global draftees
-#
-#    if draftees:
-#        headers = ['ID', 'Name'] + list(draftees[0].keys())[2:]  # Assuming first row is representative
-#
-#        # Extract relevant data
-#        data = [[draftee['ID'], draftee['Name']] + list(draftee.values())[2:] for draftee in draftees]
-#
-#        # Format as a table and send
-#        table = tabulate(data, headers, tablefmt='grid')
-#        await ctx.send(f'```\n{table}\n```')
-#    else:
-#        await ctx.send("No draftees available.")
-#----------------------------------------------------------#
+    #from tabulate import tabulate
+    #
+    #@bot.command()
+    #async def list_draftees(ctx):
+    #    global draftees
+    #
+    #    if draftees:
+    #        headers = ['ID', 'Name'] + list(draftees[0].keys())[2:]  # Assuming first row is representative
+    #
+    #        # Extract relevant data
+    #        data = [[draftee['ID'], draftee['Name']] + list(draftee.values())[2:] for draftee in draftees]
+    #
+    #        # Format as a table and send
+    #        table = tabulate(data, headers, tablefmt='grid')
+    #        await ctx.send(f'```\n{table}\n```')
+    #    else:
+    #        await ctx.send("No draftees available.")
+    #----------------------------------------------------------#
 
 
 import discord
@@ -134,6 +134,8 @@ import os
 import csv
 from tabulate import tabulate
 import random
+from datetime import datetime, timedelta
+import asyncio
 
 
 # pull token from file
@@ -142,7 +144,7 @@ TOKEN = open("token.txt","r").readline()
 # establish intents for bot
 intents = discord.Intents.default()
 intents.members = True
-intents.messages == True
+intents.messages = True
 intents.message_content = True
 intents.guilds = True
 intents.presences = True
@@ -162,7 +164,7 @@ async def test(ctx):
 draft_ids = []
 draft_data = []
 
-# input validation
+# input validation - draft_id
 async def validate_input(ctx, draft_id, action):
     user = str(ctx.author)
     if draft_id is None:
@@ -177,6 +179,25 @@ async def validate_input(ctx, draft_id, action):
         return None, None, None
     str_draft_id = str(draft_id)
     return user,draft_id,str_draft_id
+
+# input validation - author
+async def validate_author(ctx, draft_id, author, action, author_only):
+    user = str(author)
+    str_draft_id = str(draft_id)
+    if draft_ids[draft_id] == "#cancelled":
+        print(user + " attempted to " + action + " an already-cancelled draft")
+        await ctx.send(str_draft_id + " is already cancelled")
+        return False
+    elif draft_ids[draft_id] == "#complete":
+        print(user + " attempted to " + action + " an already-completed draft")
+        await ctx.send(str_draft_id + " is already complete")
+        return False
+    elif user == draft_ids[draft_id]:
+        print(user + " is attempting to " + action + " a draft initiated by " + draft_ids[draft_id])
+        await ctx.send("draft " + str_draft_id + " belongs to " + draft_ids[draft_id])
+        return False
+    else:
+        return True
 
 # check if there are enough draftees to execute the draft
 def can_execute_draft(draft_id, num_rounds):
@@ -207,7 +228,6 @@ def draft_draftee(draft_id, draftee_id, member_id):
             draft_data[draft_id]["turn"] += 1
             draft_data[draft_id]["members"][member_id]["roster"].append(drafted)
 
-
 #
 # root commands
 #
@@ -229,12 +249,16 @@ async def initiate(ctx, draft_type="None"):
     await ctx.message.channel.send("draft " + str(draft_id) + " initiated")
     await ctx.message.channel.send("please load a draftee list in csv format via $load")
     draft_ids.append(user)
+    now = datetime.datetime.now()
     data = {
         'opt_in' : opt_in,
         'members' : members,
-        'draftees': [],
-        'order': [],
-        'turn': 0
+        'draftees' : [],
+        'order' : [],
+        'turn' : 0,
+        'started' : False,
+        'prevturn' : 0,
+        'lastdraft' : now
     }
     draft_data.append(data)
     return
@@ -276,28 +300,16 @@ async def cancel(ctx, draft_id=None):
 
     if draft_id < 0:
         print(user + " attempted to load a negative draft number")
-        await ctx.message.channel.send("pls no underflow tyvm")
+        await ctx.send("pls no underflow tyvm")
         return
     elif draft_id > len(draft_ids)-1:
         print(user + " attempted to cancel a draft that doesn't exist")
-        await ctx.message.channel.send(str_draft_id + " hasn't been created yet")
+        await ctx.send(str_draft_id + " hasn't been created yet")
         return
-    elif draft_ids[draft_id] == "#cancelled":
-        print(user + " attempted to cancel an already-cancelled draft")
-        await ctx.message.channel.send(str_draft_id + " is already cancelled")
-        return
-    elif draft_ids[draft_id] == "#complete":
-        print(user + " attempted to cancel an already-completed draft")
-        await ctx.message.channel.send(str_draft_id + " is already complete")
-        return
-    elif isinstance(draft_id,int):
-        if user == draft_ids[draft_id]:
-            print(user + " has cancelled draft " + str_draft_id)
-            await ctx.message.channel.send("draft " + str_draft_id + " has been cancelled")
-            draft_ids[draft_id] = "#cancelled"
-        else:
-            print(user + " is attempting to cancel a draft initiated by " + draft_ids[draft_id])
-            await ctx.message.channel.send("draft " + str_draft_id + " belongs to " + draft_ids[draft_id])
+    if validate_author(ctx, draft_id, ctx.author, "cancel"):
+        print(user + " has cancelled draft " + str_draft_id)
+        await ctx.send("draft " + str_draft_id + " has been cancelled")
+        draft_ids[draft_id] = "#cancelled"
 
 @bot.command()
 async def load(ctx, draft_id=None):
@@ -305,27 +317,27 @@ async def load(ctx, draft_id=None):
     user, draft_id, str_draft_id = await validate_input(ctx, draft_id, "load")
     if user is None or draft_id is None or str_draft_id is None:
         return
-
-    if ctx.message.attachments:
-        if len(ctx.message.attachments) == 1:
-            attachment = ctx.message.attachments[0]
-            if attachment.filename.endswith('.csv'):
-                await attachment.save(attachment.filename)
-                with open(attachment.filename, 'r') as file:
-                    reader = csv.DictReader(file)
-                    for row in reader:
-                        id = row['id']
-                        name = row['name']
-                        other_fields = {key: value for key, value in row.items() if key not in ['id', 'name']}
-                        draft_data[draft_id]["draftees"].append({'id':id,'name':name,**other_fields})
-                os.remove(attachment.filename)
-                await ctx.send("loaded draftees successfully")
+    if validate_author(ctx, draft_id, ctx.author, "load"):
+        if ctx.message.attachments:
+            if len(ctx.message.attachments) == 1:
+                attachment = ctx.message.attachments[0]
+                if attachment.filename.endswith('.csv'):
+                    await attachment.save(attachment.filename)
+                    with open(attachment.filename, 'r') as file:
+                        reader = csv.DictReader(file)
+                        for row in reader:
+                            id = row['id']
+                            name = row['name']
+                            other_fields = {key: value for key, value in row.items() if key not in ['id', 'name']}
+                            draft_data[draft_id]["draftees"].append({'id':id,'name':name,**other_fields})
+                    os.remove(attachment.filename)
+                    await ctx.send("loaded draftees successfully")
+                else:
+                    await ctx.send("please use a csv")
             else:
-                await ctx.send("please use a csv")
+                await ctx.send("please only send one file at a time")
         else:
-            await ctx.send("please only send one file at a time")
-    else:
-        await ctx.send("please attach a csv")
+            await ctx.send("please attach a csv")
 
 @bot.command()
 async def list(ctx, draft_id=None):
@@ -348,27 +360,93 @@ async def execute(ctx, draft_id=None, round_count=None):
     user, draft_id, str_draft_id = await validate_input(ctx, draft_id, "execute (id)")
     if user is None or draft_id is None or str_draft_id is None:
         return
-    user, round_count, str_draft_id = await validate_input(ctx, round_count, "execute (round)")
-    if user is None or round_count is None or str_draft_id is None:
-        return
-    if round_count < 1:
-        await ctx.send("round count must be greater than 1")
-        return
-    if not can_execute_draft(draft_id, round_count):
-        ctx.send("insufficient number of draftees for the number of members")
-        ctx.send("(" + str(len(draft_data[draft_id]["draftees"])) + "," + str(len(draft_data[draft_id]["members"])) + "*" + round_count + ")")
-        return
-    create_draft_order(draft_id, round_count)
+    if validate_author(ctx, draft_id, ctx.author, "execute"):
+        user, round_count, str_draft_id = await validate_input(ctx, round_count, "execute (round)")
+        if user is None or round_count is None or str_draft_id is None:
+            return
+        if round_count < 1:
+            await ctx.send("round count must be greater than 1")
+            return
+        if not can_execute_draft(draft_id, round_count):
+            await ctx.send("insufficient number of draftees for the number of members")
+            await ctx.send("(" + str(len(draft_data[draft_id]["draftees"])) + "," + str(len(draft_data[draft_id]["members"])) + "*" + round_count + ")")
+            return
+        create_draft_order(draft_id, round_count)
+        [draft_data][draft_id]["started"] = True
 
-
+@bot.command()
+async def roster(ctx, draft_id=None, member_id=ctx.author.id):
+    global draft_data
+    user, draft_id, str_draft_id = await validate_input(ctx, draft_id, "retrieve roster")
+    if user is None or draft_id is None or str_draft_id is None:
+        return
+    if len(draft_data[draft_id]["members"][member_id]["roster"]) > 0:
+        headers = draft_data[draft_id]["members"][member_id]["roster"][0].keys()
+        data = {draftee.values() for draftee in draft_data[draft_id]["members"][member_id]["roster"]}
+        table = tabulate(data, headers, tablefmt='grid')
+        await ctx.send(f'```\n{table}\n```')
+    else:
+        await ctx.send("No draftees in your roster.")
 
 @bot.command()
 async def draft(ctx, draft_id=None, draftee_id=None):
-    global draft_ids, draft_data
+    global draft_data
+    user, draft_id, str_draft_id = await validate_input(ctx, draft_id, "draft - id")
+    if user is None or draft_id is None or str_draft_id is None:
+        return
+    user, draftee_id, str_draft_id = await validate_input(ctx, draftee_id, "draft - draftee")
+    if user is None or draftee_id is None or str_draft_id is None:
+        return
+    draft_draftee(draft_id, draftee_id, ctx.author.id)
+    draft_data[draft_id]["turn"] += 1
+    now = datetime.datetime.now()
+    draft_data[draft_id]["lastdraft"] = now
+    
+async def timecheck():
+    global draft_data
+    while True:
+        for drafts in [draft_data]:
+            now = datetime.datetime.now()
+            then = drafts["lastdraft"]
+            if (now - then) > timedelta(hours=24) and drafts["started"]:
+                current_user = drafts["order"]["turn"]
+                reply_all(f'<@{current_user.id}, it\'s still your turn to draft')
+        await asyncio.sleep(300)
+
+async def draftcompletecheck():
+    global draft_data
+    while True:
+        for drafts in [draft_data]:
+            if drafts["started"] and drafts["turn"] >= len(drafts["order"]):
+                reply_all(f'a draft has completed')
+
+
+async def turncheck():
+    global draft_data
+    while True:
+        for drafts in [draft_data]:
+            if drafts["started"] and drafts["turn"] > drafts["prevturn"]:
+                next_member = drafts["order"][drafts["turn"]]
+                reply_all(f'it is now @{next_member.id}\'s turn')
 
 @bot.command()
 async def sample(ctx):
     file = discord.File("./sample/sample.csv")
     await ctx.send("see attached csv", file=file)
+
+@bot.event
+async def on_ready():
+    print(f'Logged in as {bot.user.name}')
+    await reply_all(f'{bot.user.name} is ready to receive commands')
+
+async def reply_all(message):
+    for guild in bot.guilds:
+        for channel in guild.text_channels:
+            await channel.send(message)
+            await asyncio.sleep(2)
+
+bot.loop.create_task(timecheck())
+bot.loop.create_task(turncheck())
+bot.loop.create_task(draftcompletecheck())
 
 bot.run(TOKEN)
