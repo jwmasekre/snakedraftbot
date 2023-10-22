@@ -2,6 +2,8 @@
 
 discord bot for running snake drafts
 
+developed using discord.py and tested exclusively with python 3.12
+
 ## questions
 
 ### what's a draft
@@ -14,7 +16,7 @@ a type of draft where the turn order for the first round is randomized, and then
 
 so-called because the order kinda looks like a snake:
 
-```
+```ascii
 round - drafter1 - drafter2 - drafter3 - drafter4
   1  ═╪══════════╪══════════╪══════════╪═══════╗
   2      ╔═══════╪══════════╪══════════╪═══════╝
