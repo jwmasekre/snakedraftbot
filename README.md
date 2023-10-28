@@ -41,51 +41,59 @@ sends a sample csv
 
 ### $test
 
-test
+runs a test draft (only works with one draft member for now)
 
-### $initiate [opt-in]
+### $testmsg
+
+test message
+
+### $initiate draft_name [opt-in]
 
 starts a draft; if opt-in is not included, all non-bots are auto-added to the member list
 
-### $opt_in draft_id
+### $opt_in draft_name
 
 opt in to a draft
 
-### $opt_out draft_id
+### $opt_out draft_name
 
 opt out of a draft
 
-### $cancel draft_id
+### $cancel draft_name
 
 cancels a draft
 
-### $load draft_id (include attachment)
+### $load draft_name [test] (include attachment)
 
 loads a csv of draftees into the draft ***REQUIRES FIRST FIELD TO BE ID AND SECOND FIELD TO BE NAME***
 
-### $execute draft_id round_count
+don't use `test`, that's used exclusively for [$test](#test)
+
+### $execute draft_name round_count
 
 starts the draft
 
-### $list draft_id
+### $list draft_name
 
 lists the draftees available
 
-### $draft draft_id draftee_id
+### $draft draft_name draftee_id
 
 drafts a draftee
 
-### $roster draft_id [member_id]
+### $roster draft_name [member_id]
 
 check your roster, or the roster of the given member
 
 ## roadmap
 
-1. complete base functionality
-2. implement better input validation
-3. develop persistence (currently all data is lost when script exits)
-4. transparently support multiple servers
+1. ~~complete base functionality~~
+2. test the everloving shit out of it
+3. implement better input validation
+4. develop persistence (currently all data is lost when script exits)
+5. transparently support multiple servers
 
 ## changelog
 
+* 20231028 - """100% completion""", ready for testing
 * 20231011 - first real upload - not fully functional

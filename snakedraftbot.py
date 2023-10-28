@@ -51,11 +51,11 @@ intents.guilds = True
 intents.presences = True
 
 # initialize bot
-bot = commands.Bot(command_prefix='$',intents = intents,help_command = "draft_help")
+bot = commands.Bot(command_prefix='$',intents = intents)
 
 # test command
 @bot.command()
-async def test(ctx):
+async def testmsg(ctx):
     print(f'test from {ctx.author.name}')
     await ctx.send(f'@{ctx.author.id} test received :saluting_face:')
 
@@ -231,7 +231,7 @@ async def send_message(draft, message):
 
 # $initiate (creates the draft)
 @bot.command()
-async def initiate(ctx, draft_name: str = commands.parameter(default=False, description="name of the new draft"), draft_type: str = commands.parameter(default="opt-out", description="optional, type 'opt-in' if you don't want your draft to automatically include everybody in the server")):
+async def initiate(ctx, draft_name: str = commands.parameter(default=False, description="-- name of the new draft"), draft_type: str = commands.parameter(default="opt-out", description="-- optional, type 'opt-in' if you don't want your draft to automatically include everybody in the server")):
     """
     creates a new draft
     example:
@@ -240,7 +240,7 @@ async def initiate(ctx, draft_name: str = commands.parameter(default=False, desc
     global draft_register
     validate_draftName(ctx, draft_name)
     user = str(ctx.author)
-    opt_in = draft_type.lower() == 'opt-in'
+    opt_in = draft_type == 'opt-in'
     if opt_in == True:
         print(f'{user} has initiated an opt-in draft, {draft_name}')
         members = []
@@ -272,7 +272,7 @@ async def initiate(ctx, draft_name: str = commands.parameter(default=False, desc
     return
 
 @bot.command()
-async def opt_in(ctx, draft_name: str = commands.parameter(default=None, description="name of the draft you're trying to opt into")):
+async def opt_in(ctx, draft_name: str = commands.parameter(default=None, description="-- name of the draft you're trying to opt into")):
     """
     opts the user into a draft
     example:
@@ -296,7 +296,7 @@ async def opt_in(ctx, draft_name: str = commands.parameter(default=None, descrip
         await ctx.send(f'you\'ve been opted in to {draft_name}')
 
 @bot.command()
-async def opt_out(ctx, draft_name: str = commands.parameter(default=None, description="name of the draft you're trying to opt out of")):
+async def opt_out(ctx, draft_name: str = commands.parameter(default=None, description="-- name of the draft you're trying to opt out of")):
     """
     opts the user out of a draft
     example:
@@ -320,7 +320,7 @@ async def opt_out(ctx, draft_name: str = commands.parameter(default=None, descri
         await ctx.send(f'you\'ve already opted out. if you want to opt back in, use $opt_in {draft_name}')
 
 @bot.command()
-async def cancel(ctx, draft_name: str = commands.parameter(default=None,description="name of the draft you're trying to cancel")):
+async def cancel(ctx, draft_name: str = commands.parameter(default=None,description="-- name of the draft you're trying to cancel")):
     """
     cancels a draft
     only the owner of a draft can cancel
@@ -337,7 +337,7 @@ async def cancel(ctx, draft_name: str = commands.parameter(default=None,descript
         draft_register[draft_name].status = "cancelled"
 
 @bot.command()
-async def load(ctx, draft_name: str = commands.parameter(default=None,description="name of the draft you're trying to load draftees into"), test: bool = commands.parameter(default=False,description="used for testing, if you set this you're only causing problems")):
+async def load(ctx, draft_name: str = commands.parameter(default=None,description="-- name of the draft you're trying to load draftees into"), test: bool = commands.parameter(default=False,description="-- used for testing, if you set this you're only causing problems")):
     """
     loads draftees into a draft
     only the owner of a draft can load
@@ -380,7 +380,7 @@ async def load(ctx, draft_name: str = commands.parameter(default=None,descriptio
             await ctx.send("please attach a csv")
 
 @bot.command()
-async def list(ctx, draft_name: str = commands.parameter(default=None,description="name of the draft you're trying to list draftees for")):
+async def list(ctx, draft_name: str = commands.parameter(default=None,description="-- name of the draft you're trying to list draftees for")):
     """
     lists the draftees in the draft
     example:
@@ -399,7 +399,7 @@ async def list(ctx, draft_name: str = commands.parameter(default=None,descriptio
         await ctx.send("No draftees available.")
 
 @bot.command()
-async def execute(ctx, draft_name: str = commands.parameter(default=None,description="name of the draft you're trying to start"), round_count: int = commands.parameter(default=None, description="number of rounds to run the draft for")):
+async def execute(ctx, draft_name: str = commands.parameter(default=None,description="-- name of the draft you're trying to start"), round_count: int = commands.parameter(default=None, description="-- number of rounds to run the draft for")):
     """
     starts a draft
     only the owner of a draft can execute
@@ -423,7 +423,7 @@ async def execute(ctx, draft_name: str = commands.parameter(default=None,descrip
         draft_register[draft_name].status = "started"
 
 @bot.command()
-async def roster(ctx, draft_name: str = commands.parameter(default=None,description="name of the draft you're trying to list a roster for"), member_id: str = commands.parameter(default=None, description="optional, the discord id of the draft member you want to see the roster for")):
+async def roster(ctx, draft_name: str = commands.parameter(default=None,description="-- name of the draft you're trying to list a roster for"), member_id: str = commands.parameter(default=None, description="-- optional, the discord id of the draft member you want to see the roster for")):
     """
     reports the users's roster, or the roster of another user
     example:
@@ -444,7 +444,7 @@ async def roster(ctx, draft_name: str = commands.parameter(default=None,descript
         await ctx.send("No draftees in your roster.")
 
 @bot.command()
-async def draft(ctx, draft_name: str = commands.parameter(default=None,description="name of the draft you're trying to draft in"), draftee_id: int = commands.parameter(default=None,description="id of the draftee you're attempting to draft")):
+async def draft(ctx, draft_name: str = commands.parameter(default=None,description="-- name of the draft you're trying to draft in"), draftee_id: int = commands.parameter(default=None,description="-- id of the draftee you're attempting to draft")):
     """
     drafts a draftee
     only the user who's turn it is can draft
@@ -519,7 +519,7 @@ async def test(ctx):
 async def on_ready():
     print(f'Logged in as {bot.user.name}')
     command_list = "\n".join(command.name for command in bot.commands)
-    await reply_all(f'{bot.user.name} is ready to receive commands\n\n***valid commands:***\n{command_list}')
+    await reply_all(f'{bot.user.name} is ready to receive commands\n\n***valid commands:***\n```\n{command_list}\n```')
     await bot.loop.create_task(timeCheck())
     await bot.loop.create_task(turnCheck())
     await bot.loop.create_task(draftCompleteCheck())
