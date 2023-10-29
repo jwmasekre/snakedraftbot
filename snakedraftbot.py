@@ -57,7 +57,7 @@ bot = commands.Bot(command_prefix='$',intents = intents)
 @bot.command()
 async def testmsg(ctx):
     print(f'test from {ctx.author.name}')
-    await ctx.send(f'@{ctx.author.id} test received :saluting_face:')
+    await ctx.send(f'{ctx.author.mention} test received :saluting_face:')
 
 # input validation - is not negative
 async def is_notNegative(ctx, val, valType, action, positive=False):
@@ -65,28 +65,30 @@ async def is_notNegative(ctx, val, valType, action, positive=False):
     if positive:
         if val < 1:
             print(f'{user} attempted to {action} with a non-positive value for {valType}')
-            return False
+            return None, None
+        else:
+            return user, val
     elif val < 0:
         print(f'{user} attempted to {action} with a negative value for {valType}')
-        return False
+        return None, None
     else:
-        return True
+        return user, val
 
 # input validation - draft name not already taken
 async def validate_draftName(ctx, draft_name):
     user = ctx.author.name
     if draft_name in draft_register:
         print(f'{user} attempted to create a draft with name {draft_name}, which is already created')
-        return False
-    return True
+        return None, None
+    return user, draft_name
 
 # input validation - draft exists
 async def is_draft(ctx, draft_name, action):
     user = ctx.author.name
     if draft_name not in draft_register:
         print(f'{user} attempted a {action} action for a draft that does not exist ({draft_name})')
-        return False
-    return True
+        return None, None
+    return user, draft_name
 
 # input validation - is integer
 async def is_integer(ctx, val, valType, action):
@@ -106,6 +108,7 @@ async def is_integer(ctx, val, valType, action):
 # input validation - draft actions & ownership
 async def validate_authorAction(ctx, draft, author, action, authorOnly=False, noStart=False):
     user = str(author.name)
+    draft = draft_register[draft]
     if draft.status == "cancelled":
         print(f'{user} attempted to {action} an already-cancelled draft')
         await ctx.send(f'{draft.name} is already cancelled')
@@ -129,25 +132,33 @@ async def validate_authorAction(ctx, draft, author, action, authorOnly=False, no
 
 # check if there are enough draftees to execute the draft
 async def can_execute(draft, num_rounds):
-    return len(draft.draftees) > len(draft.members) * num_rounds
+    draft = draft_register[draft]
+    return len(draft.draftees) >= len(draft.members) * num_rounds
 
 # draft order
 async def create_draftOrder(draft, num_rounds):
-    draft_order = []
+    draft = draft_register[draft]
     rd_draft_order = list(draft.members)
+#    if len(rd_draft_order) == 1:
+#        draft.order.append(rd_draft_order)
+#        i = 1
+#        while i < num_rounds:
+#            draft.order.append(rd_draft_order)
+#            i += 1
+#    else:
     random.shuffle(rd_draft_order)
+    draft.order.append(rd_draft_order)
     i = 1
-    draft_order.append(rd_draft_order)
     while i < num_rounds:
         rd_draft_order = list(reversed(rd_draft_order))
-        draft_order.append(rd_draft_order)
+        draft.order.append(rd_draft_order)
         i += 1
-    draft.order.append(draft_order)
     return
 
 # draft action
 async def draft_draftee(ctx, draft, draftee_id, member_id):
     user = ctx.author.name
+    draft = draft_register[draft]
     if draft.member_id.name != draft.order[draft.turn]:
         print(f'{user} attempted to draft on {draft.order[draft.turn]}\'s turn')
         await ctx.send(f'it\'s not your turn')
@@ -156,7 +167,7 @@ async def draft_draftee(ctx, draft, draftee_id, member_id):
             drafted = draft.draftees.pop(i)
             draft.turn += 1
             draft.members.member_id.roster.append(drafted)
-            now = datetime.datetime.now()
+            now = datetime.now()
             draft_register[draft].lastDraft = now
             return
         else:
@@ -168,7 +179,7 @@ async def timeCheck():
     global draft_register, notif_record
     while True:
         for draft in draft_register.values():
-            now = datetime.datetime.now()
+            now = datetime.now()
             then = draft.lastDraft
             if (now - then) > timedelta(hours=24) and draft.status == "started":
                 current_drafter = draft.order[draft.turn]
@@ -177,12 +188,12 @@ async def timeCheck():
                     last = notif_record[current_drafter_draft]
                     if (now - last) > timedelta(hours=24):
                         print(f'notified {current_drafter.name} that they still need to pick')
-                        reply_all(f'<@{current_drafter.id}, it\'s still your turn to draft')
+                        reply_all(f'<@{current_drafter.id}>, it\'s still your turn to draft')
                         notif_record[current_drafter_draft] = now
                         return
                 else:
                     print(f'notified {current_drafter.name} that they still need to pick')
-                    reply_all(f'<@{current_drafter.id}, it\'s still your turn to draft')
+                    reply_all(f'<@{current_drafter.id}>, it\'s still your turn to draft')
                     notif_record[current_drafter_draft] = now
         await asyncio.sleep(300)
 
@@ -202,11 +213,12 @@ async def turnCheck():
         for draft in draft_register.values():
             if (draft.status == "started") and (draft.turn > draft.prevTurn):
                 next_member = draft.order[draft.turn]
-                send_message(draft,f'it is now @{next_member.id}\'s turn')
+                send_message(draft,f'it is now <@{next_member.id}>\'s turn')
         await asyncio.sleep(300)
 
 async def printRoster(ctx, draft):
     user = ctx.author.name
+    draft = draft_register[draft]
     print(f'printing roster for {user}')
     await ctx.send(f'{user}:\n\n{draft.ctx.author.id.roster}')
 
@@ -217,6 +229,7 @@ async def reply_all(message):
             await asyncio.sleep(2)
 
 async def send_message(draft, message):
+    draft = draft_register[draft]
     channel = bot.get_channel(draft.channel)
     if channel:
         await channel.send(message)
@@ -238,7 +251,7 @@ async def initiate(ctx, draft_name: str = commands.parameter(default=False, desc
 		$initiate draft_name [opt-in]
     """
     global draft_register
-    validate_draftName(ctx, draft_name)
+    await validate_draftName(ctx, draft_name)
     user = str(ctx.author)
     opt_in = draft_type == 'opt-in'
     if opt_in == True:
@@ -254,7 +267,7 @@ async def initiate(ctx, draft_name: str = commands.parameter(default=False, desc
         ) for member in ctx.guild.members if not member.bot]
     await ctx.message.channel.send(f'draft {draft_name} initiated')
     await ctx.message.channel.send(f'please load a draftee list in csv format via $load {draft_name}')
-    now = datetime.datetime.now()
+    now = datetime.now()
     data = DraftData(
         name = draft_name,
         opt_in = opt_in,
@@ -279,7 +292,7 @@ async def opt_in(ctx, draft_name: str = commands.parameter(default=None, descrip
 		$opt_in draft_name
     """
     global draft_register
-    user, draft_name = await is_draft(ctx, draft_name)
+    user, draft_name = await is_draft(ctx, draft_name,"opt-in")
     if user is None or draft_name is None:
         return
     member_ids = {str(member.id) for member in draft_register[draft_name].members}
@@ -303,7 +316,7 @@ async def opt_out(ctx, draft_name: str = commands.parameter(default=None, descri
 		$opt_out draft_name
     """
     global draft_register
-    user, draft_name = await is_draft(ctx, draft_name)
+    user, draft_name = await is_draft(ctx, draft_name,"opt-out")
     if user is None or draft_name is None:
         return
     member_ids = {str(member.id) for member in draft_register[draft_name].members}
@@ -314,7 +327,7 @@ async def opt_out(ctx, draft_name: str = commands.parameter(default=None, descri
             roster = [],
             data =  ctx.author
         )
-        draft_register[draft_name].members.discard(new_member)
+        draft_register[draft_name].members.remove(new_member)
         await ctx.send(f'you\'ve been opted out of {draft_name}')
     else:
         await ctx.send(f'you\'ve already opted out. if you want to opt back in, use $opt_in {draft_name}')
@@ -349,9 +362,10 @@ async def load(ctx, draft_name: str = commands.parameter(default=None,descriptio
     user, draft_name = await is_draft(ctx, draft_name, "load")
     if user is None or draft_name is None:
         return
-    if validate_authorAction(ctx, draft_name, ctx.author, "load"):
+    if await validate_authorAction(ctx, draft_name, ctx.author, "load"):
         if test == True:
             with open(".\\sample\\sample.csv",'r') as file:
+                reader = csv.DictReader(file)
                 for row in reader:
                     id = row['id']
                     name = row['name']
@@ -380,7 +394,7 @@ async def load(ctx, draft_name: str = commands.parameter(default=None,descriptio
             await ctx.send("please attach a csv")
 
 @bot.command()
-async def list(ctx, draft_name: str = commands.parameter(default=None,description="-- name of the draft you're trying to list draftees for")):
+async def draftlist(ctx, draft_name: str = commands.parameter(default=None,description="-- name of the draft you're trying to list draftees for")):
     """
     lists the draftees in the draft
     example:
@@ -411,15 +425,16 @@ async def execute(ctx, draft_name: str = commands.parameter(default=None,descrip
     user, draft_name = await is_draft(ctx, draft_name, "execute")
     if user is None or draft_name is None:
         return
-    if validate_authorAction(ctx, draft_name, ctx.author, "execute"):
+    if await validate_authorAction(ctx, draft_name, ctx.author, "execute"):
         user, round_count = await is_notNegative(ctx, round_count, "round count", "execute (round)", True)
         if user is None or round_count is None:
             return
-        if not can_execute(draft_name, round_count):
+        if not await can_execute(draft_name, round_count):
             await ctx.send("insufficient number of draftees for the number of members")
-            await ctx.send(f'( {len(draft_register[draft_name].draftees)}) , {len(draft_register[draft_name].members)}) * {round_count}')
+            await ctx.send(f'(draftees: {len(draft_register[draft_name].draftees)}, member*round: {len(draft_register[draft_name].members)})*{round_count}={len(draft_register[draft_name].members)*round_count}')
             return
-        create_draftOrder(draft_name, round_count)
+        await ctx.send(f'DEBUG: Executing draft order for {draft_name} with {round_count} rounds.')
+        await create_draftOrder(draft_name, round_count)
         draft_register[draft_name].status = "started"
 
 @bot.command()
@@ -455,13 +470,13 @@ async def draft(ctx, draft_name: str = commands.parameter(default=None,descripti
     user, draft_name = await is_draft(ctx, draft_name, "draft")
     if user is None or draft_name is None:
         return
-    user, draftee_id = await is_integer(ctx, draftee_id, "draft draftee")
+    user, draftee_id = await is_integer(ctx, draftee_id, "draftee", "draft draftee")
     if user is None or draftee_id is None:
         return
-    user, draftee_id = await is_notNegative(ctx, draftee_id, "draft draftee")
+    user, draftee_id = await is_notNegative(ctx, draftee_id, "draftee", "draft draftee")
     if user is None or draftee_id is None:
         return
-    if ctx.author.name != draft_register[draft_name].ne:
+    if ctx.author.name != draft_register[draft_name].order[draft_register[draft_name].turn]:
         print()
     success = await draft_draftee(draft_name, draftee_id, ctx.author.id)
     if success is None:
@@ -494,7 +509,7 @@ async def test(ctx):
     await load(ctx,"testdraft",True)
     await asyncio.sleep(2)
     await ctx.send(f'$list testdraft')
-    await list(ctx,"testdraft")
+    await draftlist(ctx,"testdraft")
     await asyncio.sleep(2)
     await ctx.send(f'$opt-out testdraft')
     await opt_out(ctx,"testdraft")
@@ -509,7 +524,7 @@ async def test(ctx):
     await draft(ctx,"testdraft",1)
     await asyncio.sleep(2)
     await ctx.send(f'$list testdraft')
-    await list(ctx,"testdraft")
+    await draftlist(ctx,"testdraft")
     await asyncio.sleep(300)
     await ctx.send(f'$draft testdraft 0')
     await draft(ctx,"testdraft",0)

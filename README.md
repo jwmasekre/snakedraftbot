@@ -73,7 +73,7 @@ don't use `test`, that's used exclusively for [$test](#test)
 
 starts the draft
 
-### $list draft_name
+### $draftlist draft_name
 
 lists the draftees available
 
