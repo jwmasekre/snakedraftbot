@@ -10,34 +10,105 @@ import random
 from datetime import datetime, timedelta
 import asyncio
 from dataclasses import dataclass
-from typing import List, Literal, NewType
+from typing import List, Literal
+import json
+import logging
+
+# Set up the logger
+logging.basicConfig(filename='bot.log', level=logging.INFO, format='%(asctime)s - %(levelname)s: %(message)s')
+
 
 
 # create the member and draft_data dataclasses
 @dataclass
-class Member:
+class dMember:
     id: int
     name: str
     roster: List[dict]
     data: discord.Member
 
+
 @dataclass
 class DraftData:
     name: str
     opt_in: bool
-    members: List[Member]
+    members: List[dMember]
     draftees: List[dict]
-    order: List[List[Member]]
+    order: List[List[dMember]]
     turn: int
     status: Literal["initiated","started","cancelled","completed"]
     prevTurn: int
     lastDraft: datetime
-    owner: Member
+    owner: dMember
     channel: int
+
+# because i'm using discord.Member for member data, i need this to build json with it
+def serialize_discord_member(member):
+    return {
+        'accent_color': int(member.accent_color) if member.accent_color else None,
+        'accent_colour': int(member.accent_color) if member.accent_color else None,
+        'activities': [str(activity) for activity in member.activities],
+        'activity': str(member.activity) if member.activity else None,
+        'avatar': str(member.avatar) if member.avatar else None,
+        'banner': str(member.banner) if member.banner else None,
+        'bot': member.bot,
+        'color': int(member.color) if member.color else None,
+        'colour': int(member.color) if member.color else None,
+        'created_at': member.created_at.isoformat(),
+        'default_avatar': str(member.default_avatar) if member.default_avatar else None,
+        'desktop_status': str(member.desktop_status) if member.desktop_status else None,
+        'discriminator': int(member.discriminator) if member.discriminator else None,
+        'display_avatar': str(member.display_avatar) if member.display_avatar else None,
+        'display_icon': str(member.display_icon) if member.display_icon else None,
+        'display_name': member.display_name,
+        'dm_channel': str(member.dm_channel) if member.dm_channel else None,
+        'flags': int(member.flags) if member.flags else None,
+        'global_name': str(member.global_name) if member.global_name else None,
+        'guild': str(member.guild) if member.guild else None,
+        'guild_avatar': str(member.guild_avatar) if member.guild_avatar else None,
+        'guild_permissions': int(member.guild_permissions.value),
+        'id': int(member.id) if member.id else None,
+        'joined_at': member.joined_at.isoformat(),
+        'mention': member.mention,
+        'mobile_status': str(member.mobile_status) if member.mobile_status else None,
+        'mutual_guilds': [str(guild) for guild in member.mutual_guilds],
+        'name': member.name,
+        'nick': member.nick,
+        'pending': member.pending,
+        'premium_since': member.premium_since.isoformat() if member.premium_since else None,
+        'public_flags': str(member.public_flags) if member.public_flags else None,
+        'raw_status': str(member.raw_status) if member.raw_status else None,
+        'resolved_permissions': int(member.resolved_permissions.value) if member.resolved_permissions else None,
+        'roles': [str(role) for role in member.roles],
+        'status': str(member.status) if member.status else None,
+        'system': member.system,
+        'timed_out_until': member.timed_out_until.isoformat() if member.timed_out_until else None,
+        'top_role': str(member.top_role) if member.top_role else None,
+        'voice': str(member.voice) if member.voice else None,
+        'web_status': str(member.web_status) if member.web_status else None
+    }
+
+# makes it so we can serialize the dataclasses w/ json
+def custom_serializer(obj):
+    if isinstance(obj, dMember):
+        return obj.__dict__
+    elif isinstance(obj, DraftData):
+        obj_dict = obj.__dict__.copy()
+        obj_dict['lastDraft'] = obj_dict['lastDraft'].isoformat() if obj_dict['lastDraft'] else None
+        return obj_dict
+    elif isinstance(obj, discord.Member):
+        return serialize_discord_member(obj)
+    elif isinstance(obj, datetime):
+        return obj.isoformat()
+    else:
+        raise TypeError(f'Object of type {obj.__class__.__name__} is not JSON serializable')
 
 # only global variables, the list of all drafts and the record of notifications
 draft_register = {}
 notif_record = {}
+
+# okay i lied, we can add a variable for how many backups we want to retain
+max_backups = 7
 
 # pull token from file
 TOKEN = open("token.txt","r").readline()
@@ -56,7 +127,7 @@ bot = commands.Bot(command_prefix='$',intents = intents)
 # test command
 @bot.command()
 async def testmsg(ctx):
-    print(f'test from {ctx.author.name}')
+    logging.info(f'test from {ctx.author.name}')
     await ctx.send(f'{ctx.author.mention} test received :saluting_face:')
 
 # input validation - is not negative
@@ -64,12 +135,12 @@ async def is_notNegative(ctx, val, valType, action, positive=False):
     user = ctx.author.name
     if positive:
         if val < 1:
-            print(f'{user} attempted to {action} with a non-positive value for {valType}')
+            logging.info(f'{user} attempted to {action} with a non-positive value for {valType}')
             return None, None
         else:
             return user, val
     elif val < 0:
-        print(f'{user} attempted to {action} with a negative value for {valType}')
+        logging.info(f'{user} attempted to {action} with a negative value for {valType}')
         return None, None
     else:
         return user, val
@@ -78,7 +149,7 @@ async def is_notNegative(ctx, val, valType, action, positive=False):
 async def validate_draftName(ctx, draft_name):
     user = ctx.author.name
     if draft_name in draft_register:
-        print(f'{user} attempted to create a draft with name {draft_name}, which is already created')
+        logging.info(f'{user} attempted to create a draft with name {draft_name}, which is already created')
         return None, None
     return user, draft_name
 
@@ -86,7 +157,7 @@ async def validate_draftName(ctx, draft_name):
 async def is_draft(ctx, draft_name, action):
     user = ctx.author.name
     if draft_name not in draft_register:
-        print(f'{user} attempted a {action} action for a draft that does not exist ({draft_name})')
+        logging.info(f'{user} attempted a {action} action for a draft that does not exist ({draft_name})')
         return None, None
     return user, draft_name
 
@@ -94,13 +165,13 @@ async def is_draft(ctx, draft_name, action):
 async def is_integer(ctx, val, valType, action):
     user = str(ctx.author)
     if val is None:
-        print(f'{user} attempted to {action} without a value for {valType}')
+        logging.info(f'{user} attempted to {action} without a value for {valType}')
         await ctx.send(f'please include a value for {valType} when attempting to {action}')
         return None, None
     try:
         val = int(val)
     except ValueError:
-        print(f'{user} attempted to {action} with an invalid value for {valType}')
+        logging.info(f'{user} attempted to {action} with an invalid value for {valType}')
         await ctx.message.channel.send(f'{valType} must be an integer')
         return None, None
     return user,val
@@ -110,21 +181,21 @@ async def validate_authorAction(ctx, draft, author, action, authorOnly=False, no
     user = str(author.name)
     draft = draft_register[draft]
     if draft.status == "cancelled":
-        print(f'{user} attempted to {action} an already-cancelled draft')
+        logging.info(f'{user} attempted to {action} an already-cancelled draft')
         await ctx.send(f'{draft.name} is already cancelled')
         return False
     elif draft.status == "completed":
-        print(f'{user} attempted to {action} an already-completed draft')
+        logging.info(f'{user} attempted to {action} an already-completed draft')
         await ctx.send(f'{draft.name} is already complete')
         return False
     elif noStart:
         if draft.status == "started":
-            print(f'{user} attempted to {action} an already-started draft')
+            logging.info(f'{user} attempted to {action} an already-started draft')
             await ctx.send(f'{draft.name} is already started')
             return False
     elif authorOnly:
         if user == draft.owner:
-            print(f'{user} attempted to {action} a draft initiated by {draft.owner}')
+            logging.info(f'{user} attempted to {action} a draft initiated by {draft.owner}')
             await ctx.send(f'draft {draft.name} belongs to {draft.owner}, and only the draft owner can {action}')
             return False
     else:
@@ -172,6 +243,7 @@ async def draft_draftee(ctx, draft, draftee_id):
             if int(draftee['id']) == draftee_id:
                 drafted = draft.draftees.pop(i)
                 drafter.roster.append(drafted)
+                await ctx.send(f'you drafted {drafted["name"]}')
                 draft.turn += 1
                 now = datetime.now()
                 draft.lastDraft = now
@@ -193,40 +265,52 @@ async def timeCheck():
                 if current_drafter_draft in notif_record:
                     last = notif_record[current_drafter_draft]
                     if (now - last) > timedelta(hours=24):
-                        print(f'notified {current_drafter.name} that they still need to pick')
+                        logging.info(f'notified {current_drafter.name} that they still need to pick')
                         reply_all(f'<@{current_drafter.id}>, it\'s still your turn to draft')
                         notif_record[current_drafter_draft] = now
                         return
                 else:
-                    print(f'notified {current_drafter.name} that they still need to pick')
+                    logging.info(f'notified {current_drafter.name} that they still need to pick')
                     reply_all(f'<@{current_drafter.id}>, it\'s still your turn to draft')
                     notif_record[current_drafter_draft] = now
-        await asyncio.sleep(60)
+        await asyncio.sleep(6)
 
 async def draftCompleteCheck():
     global draft_register
     while True:
         for draft in draft_register.values():
             if (draft.status == "started") and (draft.turn >= len(draft.order)):
-                send_message(f'a draft has completed')
+                await send_message(draft.name,f'a draft has completed')
                 draft.status = "completed"
-                printRoster(draft)
-        await asyncio.sleep(60)
+                await send_message(draft.name,f'Rosters:')
+                await printRoster(None,draft.name)
+                await send_message(draft.name,f'backing up the register')
+                save_json()
+        await asyncio.sleep(6)
 
 async def turnCheck():
     global draft_register
     while True:
         for draft in draft_register.values():
             if (draft.status == "started") and (draft.turn > draft.prevTurn):
-                next_member = draft.order[draft.turn]
-                send_message(draft,f'it is now <@{next_member.id}>\'s turn')
-        await asyncio.sleep(60)
+                next_member = draft.order[draft.turn][0]
+                await send_message(draft.name,f'it is now <@{next_member.id}>\'s turn')
+                draft.prevTurn = draft.turn
+        await asyncio.sleep(20)
 
 async def printRoster(ctx, draft):
-    user = ctx.author.name
     draft = draft_register[draft]
-    print(f'printing roster for {user}')
-    await ctx.send(f'{user}:\n\n{draft.ctx.author.id.roster}')
+    if ctx == None:
+        for member in draft.members:
+            logging.info(f'printing roster for {member.name}')
+            data = tabulate(member.roster, headers="keys", tablefmt="grid")
+            await send_message(draft.name,f'<@{member.id}>:\n\n```{data}```')
+    else:
+        user = ctx.author.name
+        logging.info(f'printing roster for {user}')
+        drafter = await get_member_by_id(draft, ctx.author.id)
+        data = tabulate(drafter.roster, headers="keys", tablefmt="grid")
+        await ctx.send(draft.name,f'<@{drafter.id}>:\n\n```{data}```')
 
 async def reply_all(message):
     for guild in bot.guilds:
@@ -240,8 +324,28 @@ async def send_message(draft, message):
     if channel:
         await channel.send(message)
     else:
-        print(f'could not find the channel for {draft.name}')
+        logging.info(f'could not find the channel for {draft.name}')
 
+# storing the draft register as json
+def save_json():
+    if os.path.exists('draft_register.json'):
+        for i in range(max_backups-3, -1, -1):
+            current_backup = f'draft_register.json.{i}'
+            next_backup = f'draft_register.json.{i+1}'
+            if os.path.exists(current_backup):
+                os.rename(current_backup, next_backup)
+        os.rename('draft_register.json','draft_register.json.0')
+    with open('draft_register.json','w') as json_file:
+        json.dump(draft_register, json_file, default=custom_serializer)
+
+# retrieving the draft register as json
+def load_json():
+    global draft_register
+    try:
+        with open('draft_register.json','r') as json_file:
+            draft_register = json.load(json_file)
+    except FileNotFoundError:
+        logging.info("no data found")
 
 #
 # bot commands
@@ -261,11 +365,11 @@ async def initiate(ctx, draft_name: str = commands.parameter(default=False, desc
     user = str(ctx.author)
     opt_in = draft_type == 'opt-in'
     if opt_in == True:
-        print(f'{user} has initiated an opt-in draft, {draft_name}')
+        logging.info(f'{user} has initiated an opt-in draft, {draft_name}')
         members = []
     else:
-        print(f'{user} has initiated a draft, {draft_name}')
-        members = [Member(
+        logging.info(f'{user} has initiated a draft, {draft_name}')
+        members = [dMember(
             id = str(ctx.author.id),
             name = ctx.author.name,
             roster = [],
@@ -305,7 +409,7 @@ async def opt_in(ctx, draft_name: str = commands.parameter(default=None, descrip
     if str(ctx.author.id) in member_ids:
         await ctx.send(f'you\'ve already opted in. if you want to opt back out, use $opt_out {draft_name}')
     else:
-        new_member = Member(
+        new_member = dMember(
             id = str(ctx.author.id),
             name =  ctx.author.name,
             roster = [],
@@ -327,7 +431,7 @@ async def opt_out(ctx, draft_name: str = commands.parameter(default=None, descri
         return
     member_ids = {str(member.id) for member in draft_register[draft_name].members}
     if str(ctx.author.id) in member_ids:
-        new_member = Member(
+        new_member = dMember(
             id = str(ctx.author.id),
             name =  ctx.author.name,
             roster = [],
@@ -351,7 +455,7 @@ async def cancel(ctx, draft_name: str = commands.parameter(default=None,descript
     if user is None or draft_name is None:
         return
     if validate_authorAction(ctx, draft_name, ctx.author, "cancel"):
-        print(user + " has cancelled draft " + draft_name)
+        logging.info(user + " has cancelled draft " + draft_name)
         await ctx.send(f'draft {draft_name} has been cancelled')
         draft_register[draft_name].status = "cancelled"
 
@@ -439,9 +543,12 @@ async def execute(ctx, draft_name: str = commands.parameter(default=None,descrip
             await ctx.send("insufficient number of draftees for the number of members")
             await ctx.send(f'(draftees: {len(draft_register[draft_name].draftees)}, member*round: {len(draft_register[draft_name].members)})*{round_count}={len(draft_register[draft_name].members)*round_count}')
             return
-        await ctx.send(f'DEBUG: Executing draft order for {draft_name} with {round_count} rounds.')
         draft_register[draft_name].order = await create_draftOrder(draft_name, round_count)
         draft_register[draft_name].status = "started"
+        await send_message(draft_name, f'Draft order: {" -> ".join(member.name for member in draft_register[draft_name].order[0])}')
+        draft = draft_register[draft_name]
+        next_member = draft.order[draft.turn][0]
+        await send_message(draft.name,f'it is <@{next_member.id}>\'s turn')
 
 @bot.command()
 async def roster(ctx, draft_name: str = commands.parameter(default=None,description="-- name of the draft you're trying to list a roster for"), member_id: str = commands.parameter(default=None, description="-- optional, the discord id of the draft member you want to see the roster for")):
@@ -484,7 +591,7 @@ async def draft(ctx, draft_name: str = commands.parameter(default=None,descripti
         return
     drafter = draft_register[draft_name].order[draft_register[draft_name].turn][0].name
     if user != drafter:
-        print(f'{user} attempted to draft in {draft_name} on {drafter}\'s turn')
+        logging.info(f'{user} attempted to draft in {draft_name} on {drafter}\'s turn')
         await ctx.message(f'it\'s {drafter}\'s turn, idiot')
     success = await draft_draftee(ctx, draft_name, draftee_id)
     if success is None:
@@ -499,6 +606,16 @@ async def sample(ctx):
     """
     file = discord.File("./sample/sample.csv")
     await ctx.send("see attached csv", file=file)
+
+@bot.command()
+async def backup(ctx):
+    """
+    saves the draft register to a json file
+    example:
+		$backup
+    """
+    save_json()
+    await ctx.send(f'draft register saved')
 
 @bot.command()
 async def test(ctx):
@@ -530,21 +647,23 @@ async def test(ctx):
     await asyncio.sleep(2)
     await ctx.send(f'$draft testdraft 1')
     await draft(ctx,"testdraft",1)
-    await asyncio.sleep(2)
+    await asyncio.sleep(22)
     await ctx.send(f'$draftlist testdraft')
     await draftlist(ctx,"testdraft")
     await asyncio.sleep(2)
     await ctx.send(f'$draft testdraft 0')
     await draft(ctx,"testdraft",0)
-    await asyncio.sleep(2)
+    await asyncio.sleep(22)
 
 @bot.event
 async def on_ready():
-    print(f'Logged in as {bot.user.name}')
+    logging.info(f'Logged in as {bot.user.name}')
     command_list = "\n".join(command.name for command in bot.commands)
-    await reply_all(f'{bot.user.name} is ready to receive commands\n\n***valid commands:***\n```\n{command_list}\n```')
-    await bot.loop.create_task(timeCheck())
-    await bot.loop.create_task(turnCheck())
-    await bot.loop.create_task(draftCompleteCheck())
+    await reply_all(f'***s***nake***d***raft***b***ot is ready to receive commands\n\n***valid commands:***\n```\n{command_list}\n```')
+    logging.info(f'loading saved draft')
+    load_json()
+    bot.loop.create_task(timeCheck())
+    bot.loop.create_task(turnCheck())
+    bot.loop.create_task(draftCompleteCheck())
 
 bot.run(TOKEN)
