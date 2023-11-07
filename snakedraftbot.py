@@ -27,7 +27,6 @@ class dMember:
     roster: List[dict]
     data: discord.Member
 
-
 @dataclass
 class DraftData:
     name: str
@@ -122,7 +121,7 @@ intents.guilds = True
 intents.presences = True
 
 # initialize bot
-bot = commands.Bot(command_prefix='$',intents = intents)
+bot = commands.Bot(command_prefix='$',intents = intents,activity=discord.Activity(type=discord.ActivityType.watching, name='🐍 for $help'))
 
 # test command
 @bot.command()

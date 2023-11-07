@@ -105,6 +105,7 @@ provides info, supports help for commands as well
 
 ## changelog
 
+* 20231107 - added presence and a logo
 * 20231106 - tested a bunch, added the backup feature, seems to work as intended, i'm positive flaws exist still
 * 20231028 - """100% completion""", ready for testing
 * 20231011 - first real upload - not fully functional
