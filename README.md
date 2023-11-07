@@ -85,15 +85,26 @@ drafts a draftee
 
 check your roster, or the roster of the given member
 
+### $backup
+
+backs up the current draft registry to the server
+
+### $help [command]
+
+provides info, supports help for commands as well
+
 ## roadmap
 
 1. ~~complete base functionality~~
 2. test the everloving shit out of it
 3. implement better input validation
-4. develop persistence (currently all data is lost when script exits)
+4. ~~develop persistence (currently all data is lost when script exits)~~
 5. transparently support multiple servers
+6. ~~add logging~~
+7. improve logging
 
 ## changelog
 
+* 20231106 - tested a bunch, added the backup feature, seems to work as intended, i'm positive flaws exist still
 * 20231028 - """100% completion""", ready for testing
 * 20231011 - first real upload - not fully functional
