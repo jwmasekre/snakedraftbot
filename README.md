@@ -99,12 +99,13 @@ provides info, supports help for commands as well
 2. test the everloving shit out of it
 3. implement better input validation
 4. ~~develop persistence (currently all data is lost when script exits)~~
-5. transparently support multiple servers
+5. ~~transparently support multiple servers~~
 6. ~~add logging~~
 7. improve logging
 
 ## changelog
 
+* 20231109 - did the channel thing
 * 20231107 - added presence and a logo
 * 20231106 - tested a bunch, added the backup feature, seems to work as intended, i'm positive flaws exist still
 * 20231028 - """100% completion""", ready for testing
