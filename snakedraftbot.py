@@ -18,7 +18,6 @@ import logging
 logging.basicConfig(filename='bot.log', level=logging.INFO, format='%(asctime)s - %(levelname)s: %(message)s')
 
 
-
 # create the member and draft_data dataclasses
 @dataclass
 class dMember:
@@ -29,6 +28,7 @@ class dMember:
 
 @dataclass
 class DraftData:
+    id: str
     name: str
     opt_in: bool
     members: List[dMember]
@@ -126,7 +126,7 @@ bot = commands.Bot(command_prefix='$',intents = intents,activity=discord.Activit
 # test command
 @bot.command()
 async def testmsg(ctx):
-    logging.info(f'test from {ctx.author.name}')
+    logging.info(f'test from {ctx.author.name} in {ctx.message.channel.id}')
     await ctx.send(f'{ctx.author.mention} test received :saluting_face:')
 
 # input validation - is not negative
@@ -147,16 +147,20 @@ async def is_notNegative(ctx, val, valType, action, positive=False):
 # input validation - draft name not already taken
 async def validate_draftName(ctx, draft_name):
     user = ctx.author.name
-    if draft_name in draft_register:
-        logging.info(f'{user} attempted to create a draft with name {draft_name}, which is already created')
+    channel_id = ctx.message.channel.id
+    channel_name = ctx.message.channel.name
+    draft_id = f'{draft_name}-{channel_id}'
+    if draft_id in draft_register:
+        logging.info(f'{user} attempted to create a draft with name {draft_name}, in {channel_name} ({channel_id}) which is already created')
         return None, None
     return user, draft_name
 
 # input validation - draft exists
 async def is_draft(ctx, draft_name, action):
     user = ctx.author.name
-    if draft_name not in draft_register:
-        logging.info(f'{user} attempted a {action} action for a draft that does not exist ({draft_name})')
+    draft_id = f'{draft_name}-{ctx.message.channel.id}'
+    if draft_id not in draft_register:
+        logging.info(f'{user} attempted a {action} action for a draft that does not exist ({draft_id})')
         return None, None
     return user, draft_name
 
@@ -178,7 +182,8 @@ async def is_integer(ctx, val, valType, action):
 # input validation - draft actions & ownership
 async def validate_authorAction(ctx, draft, author, action, authorOnly=False, noStart=False):
     user = str(author.name)
-    draft = draft_register[draft]
+    draft_id = f'{draft}-{ctx.message.channel.id}'
+    draft = draft_register[draft_id]
     if draft.status == "cancelled":
         logging.info(f'{user} attempted to {action} an already-cancelled draft')
         await ctx.send(f'{draft.name} is already cancelled')
@@ -201,13 +206,15 @@ async def validate_authorAction(ctx, draft, author, action, authorOnly=False, no
         return True
 
 # check if there are enough draftees to execute the draft
-async def can_execute(draft, num_rounds):
-    draft = draft_register[draft]
+async def can_execute(ctx, draft, num_rounds):
+    draft_id = f'{draft}-{ctx.message.channel.id}'
+    draft = draft_register[draft_id]
     return len(draft.draftees) >= len(draft.members) * num_rounds
 
 # draft order
-async def create_draftOrder(draft, num_rounds):
-    draft = draft_register[draft]
+async def create_draftOrder(ctx, draft, num_rounds):
+    draft_id = f'{draft}-{ctx.message.channel.id}'
+    draft = draft_register[draft_id]
     rd_draft_order = list(draft.members)
 #    if len(rd_draft_order) == 1:
 #        draft.order.append(rd_draft_order)
@@ -235,13 +242,15 @@ async def get_member_by_id(draft, member_id):
 # draft action
 async def draft_draftee(ctx, draft, draftee_id):
     user = ctx.author.name
-    draft = draft_register[draft]
+    draft_id = f'{draft}-{ctx.message.channel.id}'
+    draft = draft_register[draft_id]
     drafter = await get_member_by_id(draft, ctx.author.id)
     if drafter:
         for i, draftee in enumerate(draft.draftees):
             if int(draftee['id']) == draftee_id:
                 drafted = draft.draftees.pop(i)
                 drafter.roster.append(drafted)
+                logging.info(f'{user} drafted {drafted.name} in {draft.id}')
                 await ctx.send(f'you drafted {drafted["name"]}')
                 draft.turn += 1
                 now = datetime.now()
@@ -279,11 +288,11 @@ async def draftCompleteCheck():
     while True:
         for draft in draft_register.values():
             if (draft.status == "started") and (draft.turn >= len(draft.order)):
-                await send_message(draft.name,f'a draft has completed')
+                await send_message(ctx, draft.name,f'a draft has completed')
                 draft.status = "completed"
-                await send_message(draft.name,f'Rosters:')
+                await send_message(ctx, draft.name,f'Rosters:')
                 await printRoster(None,draft.name)
-                await send_message(draft.name,f'backing up the register')
+                await send_message(ctx, draft.name,f'backing up the register')
                 save_json()
         await asyncio.sleep(6)
 
@@ -293,17 +302,18 @@ async def turnCheck():
         for draft in draft_register.values():
             if (draft.status == "started") and (draft.turn > draft.prevTurn):
                 next_member = draft.order[draft.turn][0]
-                await send_message(draft.name,f'it is now <@{next_member.id}>\'s turn')
+                await send_message(ctx, draft.name,f'it is now <@{next_member.id}>\'s turn')
                 draft.prevTurn = draft.turn
         await asyncio.sleep(20)
 
 async def printRoster(ctx, draft):
-    draft = draft_register[draft]
+    draft_id = f'{draft}-{ctx.message.channel.id}'
+    draft = draft_register[draft_id]
     if ctx == None:
         for member in draft.members:
             logging.info(f'printing roster for {member.name}')
             data = tabulate(member.roster, headers="keys", tablefmt="grid")
-            await send_message(draft.name,f'<@{member.id}>:\n\n```{data}```')
+            await send_message(ctx, draft.name,f'<@{member.id}>:\n\n```{data}```')
     else:
         user = ctx.author.name
         logging.info(f'printing roster for {user}')
@@ -317,8 +327,9 @@ async def reply_all(message):
             await channel.send(message)
             await asyncio.sleep(2)
 
-async def send_message(draft, message):
-    draft = draft_register[draft]
+async def send_message(ctx, draft, message):
+    draft_id = f'{draft}-{ctx.message.channel.id}'
+    draft = draft_register[draft_id]
     channel = bot.get_channel(draft.channel)
     if channel:
         await channel.send(message)
@@ -362,9 +373,10 @@ async def initiate(ctx, draft_name: str = commands.parameter(default=False, desc
     global draft_register
     await validate_draftName(ctx, draft_name)
     user = str(ctx.author)
+    draft_id = f'{draft_name}-{ctx.message.channel.id}'
     opt_in = draft_type == 'opt-in'
     if opt_in == True:
-        logging.info(f'{user} has initiated an opt-in draft, {draft_name}')
+        logging.info(f'{user} has initiated an opt-in draft, {draft_id}')
         members = []
     else:
         logging.info(f'{user} has initiated a draft, {draft_name}')
@@ -373,11 +385,12 @@ async def initiate(ctx, draft_name: str = commands.parameter(default=False, desc
             name = ctx.author.name,
             roster = [],
             data = member
-        ) for member in ctx.guild.members if not member.bot]
+        ) for member in ctx.channel.members if not member.bot]
     await ctx.message.channel.send(f'draft {draft_name} initiated')
     await ctx.message.channel.send(f'please load a draftee list in csv format via $load {draft_name}')
     now = datetime.now()
     data = DraftData(
+        id = f'{draft_name}-{ctx.message.channel.id}'
         name = draft_name,
         opt_in = opt_in,
         members = members,
@@ -390,7 +403,7 @@ async def initiate(ctx, draft_name: str = commands.parameter(default=False, desc
         owner = user,
         channel = ctx.message.channel.id
     )
-    draft_register[draft_name] = data
+    draft_register[draft_id] = data
     return
 
 @bot.command()
@@ -404,7 +417,8 @@ async def opt_in(ctx, draft_name: str = commands.parameter(default=None, descrip
     user, draft_name = await is_draft(ctx, draft_name,"opt-in")
     if user is None or draft_name is None:
         return
-    member_ids = {str(member.id) for member in draft_register[draft_name].members}
+    draft_id = f'{draft_name}-{ctx.message.channel.id}'
+    member_ids = {str(member.id) for member in draft_register[draft_id].members}
     if str(ctx.author.id) in member_ids:
         await ctx.send(f'you\'ve already opted in. if you want to opt back out, use $opt_out {draft_name}')
     else:
@@ -414,7 +428,7 @@ async def opt_in(ctx, draft_name: str = commands.parameter(default=None, descrip
             roster = [],
             data =  ctx.author
         )
-        draft_register[draft_name].members.append(new_member)
+        draft_register[draft_id].members.append(new_member)
         await ctx.send(f'you\'ve been opted in to {draft_name}')
 
 @bot.command()
@@ -428,7 +442,8 @@ async def opt_out(ctx, draft_name: str = commands.parameter(default=None, descri
     user, draft_name = await is_draft(ctx, draft_name,"opt-out")
     if user is None or draft_name is None:
         return
-    member_ids = {str(member.id) for member in draft_register[draft_name].members}
+    draft_id = f'{draft_name}-{ctx.message.channel.id}'
+    member_ids = {str(member.id) for member in draft_register[draft_id].members}
     if str(ctx.author.id) in member_ids:
         new_member = dMember(
             id = str(ctx.author.id),
@@ -436,7 +451,7 @@ async def opt_out(ctx, draft_name: str = commands.parameter(default=None, descri
             roster = [],
             data =  ctx.author
         )
-        draft_register[draft_name].members.remove(new_member)
+        draft_register[draft_id].members.remove(new_member)
         await ctx.send(f'you\'ve been opted out of {draft_name}')
     else:
         await ctx.send(f'you\'ve already opted out. if you want to opt back in, use $opt_in {draft_name}')
@@ -471,6 +486,7 @@ async def load(ctx, draft_name: str = commands.parameter(default=None,descriptio
     user, draft_name = await is_draft(ctx, draft_name, "load")
     if user is None or draft_name is None:
         return
+    draft_id = f'{draft_name}-{ctx.message.channel.id}'
     if await validate_authorAction(ctx, draft_name, ctx.author, "load"):
         if test == True:
             with open(".\\sample\\sample.csv",'r') as file:
@@ -479,7 +495,7 @@ async def load(ctx, draft_name: str = commands.parameter(default=None,descriptio
                     id = row['id']
                     name = row['name']
                     other_fields = {key: value for key, value in row.items() if key not in ['id', 'name']}
-                    draft_register[draft_name].draftees.append({'id':id,'name':name,**other_fields})
+                    draft_register[draft_id].draftees.append({'id':id,'name':name,**other_fields})
             await ctx.send("loaded draftees successfully")
         elif ctx.message.attachments:
             if len(ctx.message.attachments) == 1:
@@ -492,7 +508,7 @@ async def load(ctx, draft_name: str = commands.parameter(default=None,descriptio
                             id = row['id']
                             name = row['name']
                             other_fields = {key: value for key, value in row.items() if key not in ['id', 'name']}
-                            draft_register[draft_name].draftees.append({'id':id,'name':name,**other_fields})
+                            draft_register[draft_id].draftees.append({'id':id,'name':name,**other_fields})
                     os.remove(attachment.filename)
                     await ctx.send("loaded draftees successfully")
                 else:
@@ -513,9 +529,10 @@ async def draftlist(ctx, draft_name: str = commands.parameter(default=None,descr
     user, draft_name = await is_draft(ctx, draft_name, "list")
     if user is None or draft_name is None:
         return
-    if len(draft_register[draft_name].draftees) > 0:
-        headers = draft_register[draft_name].draftees[0].keys()
-        data = {draftee.values() for draftee in draft_register[draft_name].draftees}
+    draft_id = f'{draft_name}-{ctx.message.channel.id}'
+    if len(draft_register[draft_id].draftees) > 0:
+        headers = draft_register[draft_id].draftees[0].keys()
+        data = {draftee.values() for draftee in draft_register[draft_id].draftees}
         table = tabulate(data, headers, tablefmt='grid')
         await ctx.send(f'```\n{table}\n```')
     else:
@@ -534,20 +551,21 @@ async def execute(ctx, draft_name: str = commands.parameter(default=None,descrip
     user, draft_name = await is_draft(ctx, draft_name, "execute")
     if user is None or draft_name is None:
         return
+    draft_id = f'{draft_name}-{ctx.message.channel.id}'
     if await validate_authorAction(ctx, draft_name, ctx.author, "execute"):
         user, round_count = await is_notNegative(ctx, round_count, "round count", "execute (round)", True)
         if user is None or round_count is None:
             return
-        if not await can_execute(draft_name, round_count):
+        if not await can_execute(ctx, draft_name, round_count):
             await ctx.send("insufficient number of draftees for the number of members")
-            await ctx.send(f'(draftees: {len(draft_register[draft_name].draftees)}, member*round: {len(draft_register[draft_name].members)})*{round_count}={len(draft_register[draft_name].members)*round_count}')
+            await ctx.send(f'(draftees: {len(draft_register[draft_id].draftees)}, member*round: {len(draft_register[draft_id].members)})*{round_count}={len(draft_register[draft_id].members)*round_count}')
             return
-        draft_register[draft_name].order = await create_draftOrder(draft_name, round_count)
-        draft_register[draft_name].status = "started"
-        await send_message(draft_name, f'Draft order: {" -> ".join(member.name for member in draft_register[draft_name].order[0])}')
-        draft = draft_register[draft_name]
+        draft_register[draft_id].order = await create_draftOrder(ctx, draft_name, round_count)
+        draft_register[draft_id].status = "started"
+        await send_message(ctx, draft_name, f'Draft order: {" -> ".join(member.name for member in draft_register[draft_name].order[0])}')
+        draft = draft_register[draft_id]
         next_member = draft.order[draft.turn][0]
-        await send_message(draft.name,f'it is <@{next_member.id}>\'s turn')
+        await send_message(ctx, draft.name,f'it is <@{next_member.id}>\'s turn')
 
 @bot.command()
 async def roster(ctx, draft_name: str = commands.parameter(default=None,description="-- name of the draft you're trying to list a roster for"), member_id: str = commands.parameter(default=None, description="-- optional, the discord id of the draft member you want to see the roster for")):
@@ -562,9 +580,10 @@ async def roster(ctx, draft_name: str = commands.parameter(default=None,descript
     user, draft_name = await is_draft(ctx, draft_name, "retrieve roster")
     if user is None or draft_name is None:
         return
-    if len(draft_register[draft_name].members.member_id.roster) > 0:
-        headers = draft_register[draft_name].members.member_id.roster[0].keys()
-        data = {draftee.values() for draftee in draft_register[draft].members.member_id.roster}
+    draft_id = f'{draft_name}-{ctx.message.channel.id}'
+    if len(draft_register[draft_id].members.member_id.roster) > 0:
+        headers = draft_register[draft_id].members.member_id.roster[0].keys()
+        data = {draftee.values() for draftee in draft_register[draft_id].members.member_id.roster}
         table = tabulate(data, headers, tablefmt='grid')
         await ctx.send(f'```\n{table}\n```')
     else:
@@ -588,7 +607,8 @@ async def draft(ctx, draft_name: str = commands.parameter(default=None,descripti
     user, draftee_id = await is_notNegative(ctx, draftee_id, "draftee", "draft draftee")
     if user is None or draftee_id is None:
         return
-    drafter = draft_register[draft_name].order[draft_register[draft_name].turn][0].name
+    draft_id = f'{draft_name}-{ctx.message.channel.id}'
+    drafter = draft_register[draft_id].order[draft_register[draft_id].turn][0].name
     if user != drafter:
         logging.info(f'{user} attempted to draft in {draft_name} on {drafter}\'s turn')
         await ctx.message(f'it\'s {drafter}\'s turn, idiot')
