@@ -288,11 +288,12 @@ async def draftCompleteCheck():
     while True:
         for draft in draft_register.values():
             if (draft.status == "started") and (draft.turn >= len(draft.order)):
-                await send_message(ctx, draft.name,f'a draft has completed')
+                ctx = None
+                await send_message(ctx, draft,f'a draft has completed')
                 draft.status = "completed"
-                await send_message(ctx, draft.name,f'Rosters:')
-                await printRoster(None,draft.name)
-                await send_message(ctx, draft.name,f'backing up the register')
+                await send_message(ctx, draft,f'Rosters:')
+                await printRoster(ctx, draft.name)
+                await send_message(ctx, draft,f'backing up the register')
                 save_json()
         await asyncio.sleep(6)
 
@@ -301,8 +302,9 @@ async def turnCheck():
     while True:
         for draft in draft_register.values():
             if (draft.status == "started") and (draft.turn > draft.prevTurn):
+                ctx = None
                 next_member = draft.order[draft.turn][0]
-                await send_message(ctx, draft.name,f'it is now <@{next_member.id}>\'s turn')
+                await send_message(ctx, draft,f'it is now <@{next_member.id}>\'s turn')
                 draft.prevTurn = draft.turn
         await asyncio.sleep(20)
 
@@ -328,7 +330,10 @@ async def reply_all(message):
             await asyncio.sleep(2)
 
 async def send_message(ctx, draft, message):
-    draft_id = f'{draft}-{ctx.message.channel.id}'
+    if ctx == None:
+        draft_id = draft.id
+    else:
+        draft_id = f'{draft}-{ctx.message.channel.id}'
     draft = draft_register[draft_id]
     channel = bot.get_channel(draft.channel)
     if channel:
@@ -390,7 +395,7 @@ async def initiate(ctx, draft_name: str = commands.parameter(default=False, desc
     await ctx.message.channel.send(f'please load a draftee list in csv format via $load {draft_name}')
     now = datetime.now()
     data = DraftData(
-        id = f'{draft_name}-{ctx.message.channel.id}'
+        id = f'{draft_name}-{ctx.message.channel.id}',
         name = draft_name,
         opt_in = opt_in,
         members = members,
