@@ -386,8 +386,8 @@ async def initiate(ctx, draft_name: str = commands.parameter(default=False, desc
     else:
         logging.info(f'{user} has initiated a draft, {draft_name}')
         members = [dMember(
-            id = str(ctx.author.id),
-            name = ctx.author.name,
+            id = str(member.id),
+            name = member.name,
             roster = [],
             data = member
         ) for member in ctx.channel.members if not member.bot]
@@ -473,10 +473,11 @@ async def cancel(ctx, draft_name: str = commands.parameter(default=None,descript
     user, draft_name = await is_draft(ctx, draft_name, "cancel")
     if user is None or draft_name is None:
         return
+    draft_id = f'{draft_name}-{ctx.message.channel.id}'
     if validate_authorAction(ctx, draft_name, ctx.author, "cancel"):
-        logging.info(user + " has cancelled draft " + draft_name)
+        logging.info(f'{user} has cancelled draft {draft_name}')
         await ctx.send(f'draft {draft_name} has been cancelled')
-        draft_register[draft_name].status = "cancelled"
+        draft_register[draft_id].status = "cancelled"
 
 @bot.command()
 async def load(ctx, draft_name: str = commands.parameter(default=None,description="-- name of the draft you're trying to load draftees into"), test: bool = commands.parameter(default=False,description="-- used for testing, if you set this you're only causing problems")):
